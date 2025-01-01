@@ -1,0 +1,6 @@
+@BookAPI_HostAddress = http://localhost:5263
+
+GET {{BookAPI_HostAddress}}/Author/GetAll
+Accept: application/json
+
+###
