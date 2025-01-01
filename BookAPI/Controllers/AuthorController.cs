@@ -33,7 +33,7 @@ namespace BookAPI.Controllers
             return authors;
         }
 
-        // Author/Add будет url
+        // Author/Add будет url a
         [HttpPost("Add")]
         public async Task<IActionResult> Add(AuthorRequest request)
         {
