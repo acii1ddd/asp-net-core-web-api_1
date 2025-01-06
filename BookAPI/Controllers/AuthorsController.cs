@@ -19,7 +19,7 @@ namespace BookAPI.Controllers
             this._authorService = authorService;
         }
 
-        // /Authors (all)
+        // /Authors (all authors)
         [HttpGet]
         // пустой лист либо не пустой
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<GetAuthorResponse>))]
