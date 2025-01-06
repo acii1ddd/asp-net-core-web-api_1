@@ -1,5 +1,6 @@
 using BLL.Profiles;
 using BLL.Services;
+using BLL.ServicesInterfaces;
 using DAL.Context;
 using DAL.Interfaces;
 using DAL.Repositories;
@@ -14,8 +15,8 @@ namespace BookAPI
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
-
             builder.Services.AddControllers();
+
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
@@ -28,10 +29,10 @@ namespace BookAPI
             });
 
             // custom repositories
-            builder.Services.AddTransient<IAuthorRepository, AuthorRepository>();
+            builder.Services.AddTransient<IAuthorRepository, AuthorsRepository>();
 
             // custom services
-            builder.Services.AddTransient<AuthorService>();
+            builder.Services.AddTransient<IAuthorService, AuthorsService>();
 
             // mapping profiles
             builder.Services.AddAutoMapper(
@@ -50,7 +51,6 @@ namespace BookAPI
             app.UseHttpsRedirection();
 
             app.UseAuthorization();
-
 
             app.MapControllers();
 

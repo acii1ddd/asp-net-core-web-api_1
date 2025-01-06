@@ -10,10 +10,10 @@ namespace DAL.Interfaces
 
         public Task<List<Author>> GetByPage(int page, int pageSize);
 
-        public Task Add(Author author);
+        public Task<Author> Add(Author author);
+        
+        public Task<T?> DeleteById(Guid id);
 
         public Task Update(Author author);
-
-        public Task DeleteById(Guid id);
     }
 }

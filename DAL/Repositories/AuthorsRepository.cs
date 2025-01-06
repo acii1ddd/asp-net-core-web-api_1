@@ -5,11 +5,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DAL.Repositories
 {
-    public class AuthorRepository : IAuthorRepository
+    public class AuthorsRepository : IAuthorRepository
     {
         private readonly BookDbContext _dbContext;
 
-        public AuthorRepository(BookDbContext dbContext)
+        public AuthorsRepository(BookDbContext dbContext)
         {
             _dbContext = dbContext;
         }
@@ -36,26 +36,30 @@ namespace DAL.Repositories
                 .FirstOrDefaultAsync(author => author.Id == id);
         }
 
+        // null либо Author по email
+        public async Task<Author?> FindByEmail(string email)
+        {
+            return await _dbContext.Authors
+                .FirstOrDefaultAsync(author => author.Email == email);
+        }
+
         // получение авторов по вхождению firstName и lastName(пустой список либо список Author's)
         public async Task<List<Author>> GetByFilter(string firstName, string lastName)
         {
-            if (string.IsNullOrEmpty(firstName) && string.IsNullOrEmpty(lastName))
-            {
-                return new List<Author>();
-            }
-
+            // all authors query
             var query = _dbContext.Authors.AsNoTracking();
 
             if (!string.IsNullOrEmpty(firstName))
             {
-                query.Where(author => author.FirstName.Contains(firstName));
+                query = query.Where(author => author.FirstName.Contains(firstName));
             }
 
             if (!string.IsNullOrEmpty(lastName))
             {
-                query.Where(author => author.LastName.Contains(lastName));
+                query = query.Where(author => author.LastName.Contains(lastName));
             }
 
+            // execute query
             return await query.ToListAsync();
         }
 
@@ -72,10 +76,11 @@ namespace DAL.Repositories
                 .ToListAsync();
         }
 
-        public async Task Add(Author author)
+        public async Task<Author> Add(Author author)
         {
             await _dbContext.Authors.AddAsync(author);
             await _dbContext.SaveChangesAsync();
+            return author;
         }
 
         public async Task Update(Author author)
@@ -89,12 +94,26 @@ namespace DAL.Repositories
                     .SetProperty(a => a.BirthDate, author.BirthDate)
                 );
         }
-
-        public async Task DeleteById(Guid id)
+        
+        /// <returns>NULL</returns>
+        /// <returns>Author</returns>
+        public async Task<Author?> DeleteById(Guid id)
         {
+            // does exist in db
+            var author = await _dbContext.Authors
+                .AsNoTracking()
+                .FirstOrDefaultAsync(author => author.Id == id);
+
+            if (author == null)
+            {
+                return null;
+            }
+
             await _dbContext.Authors
                 .Where(author => author.Id == id)
                 .ExecuteDeleteAsync();
+
+            return author;
         }
     }
 }

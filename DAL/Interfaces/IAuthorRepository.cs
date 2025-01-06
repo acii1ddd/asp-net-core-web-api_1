@@ -7,5 +7,7 @@ namespace DAL.Interfaces
         public Task<List<Author>> GetAllWithBooks();
 
         public Task<List<Author>> GetByFilter(string firstName, string lastName);
+
+        public Task<Author?> FindByEmail(string email);
     }
 }

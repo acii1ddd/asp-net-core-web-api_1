@@ -1,4 +1,6 @@
-﻿namespace DAL.Entities
+﻿using System.Text.Json.Serialization;
+
+namespace DAL.Entities
 {
     public class Book
     {
@@ -12,6 +14,8 @@
 
         public Guid AuthorId { get; set; }
 
+        // для не зацикливания сериализации в json
+        [JsonIgnore]
         public Author? Author { get; set; }
 
         public List<Genre> Genres { get; set; } = [];
