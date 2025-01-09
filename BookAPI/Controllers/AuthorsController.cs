@@ -148,6 +148,7 @@ namespace BookAPI.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Add([FromBody] AddAuthorRequest request)
         {
+            // gives guid id in service
             var author = new AuthorDTO
             {
                 FirstName = request.FirstName,
@@ -177,8 +178,77 @@ namespace BookAPI.Controllers
         }
 
         /// <summary>
-        /// update method 
+        /// Full Author Update
         /// </summary>
+        /// <param name="authorId">Author Id</param>
+        /// <param name="request">Author full info</param>
+        [HttpPut("{authorId:Guid}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(UpdateAuthorResponse))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> FullUpdate([FromRoute] Guid authorId, [FromBody] FullUpdateAuthorRequest request)
+        {
+            // date is not specified in json
+            if (request.BirthDate == DateTime.MinValue)
+            {
+                return BadRequest("The BirthDate field is required.");
+            }
+
+            try
+            {
+                var author = new AuthorDTO
+                {
+                    Id = authorId,
+                    FirstName = request.FirstName,
+                    LastName = request.LastName,
+                    Email = request.Email,
+                    BirthDate = DateTime.SpecifyKind(request.BirthDate, DateTimeKind.Utc) // in utc format
+                };
+
+                await _authorService.UpdateFull(author);
+
+                var response = new UpdateAuthorResponse(authorId);
+                return Ok(response);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex.Message);
+                return BadRequest(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Partial Author Update
+        /// </summary>
+        /// <param name="authorId">Author Id</param>
+        /// <param name="request">Author info to update</param>
+        [HttpPatch("{authorId:Guid}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(UpdateAuthorResponse))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> PartialUpdate([FromRoute] Guid authorId, [FromBody] PartialUpdateAuthorRequest request)
+        {
+            try
+            {
+                // все null если не указаны все поля (ничего не обновится)
+                var author = new AuthorDTO
+                {
+                    Id = authorId,
+                    FirstName = request.FirstName ?? string.Empty,
+                    LastName = request.LastName ?? string.Empty,
+                    Email = request.Email ?? string.Empty,
+                    BirthDate = request.BirthDate ?? DateTime.MinValue
+                };
+
+                await _authorService.UpdatePartial(author);
+
+                var response = new UpdateAuthorResponse(authorId);
+                return Ok(response);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex.Message);
+                return BadRequest(ex.Message);
+            }
+        }
 
         // Authors/{Guid}
         [HttpDelete("{authorId:Guid}")]

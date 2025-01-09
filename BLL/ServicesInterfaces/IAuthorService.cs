@@ -17,5 +17,9 @@ namespace BLL.ServicesInterfaces
         public Task<List<AuthorDTO>> GetByPage(int page, int pageSize);
 
         public Task<AuthorDTO> DeleteById(Guid id);
+
+        public Task UpdateFull(AuthorDTO author);
+
+        Task UpdatePartial(AuthorDTO author);
     }
 }

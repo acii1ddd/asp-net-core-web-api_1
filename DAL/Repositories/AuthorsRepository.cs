@@ -33,6 +33,7 @@ namespace DAL.Repositories
         public async Task<Author?> GetById(Guid id)
         {
             return await _dbContext.Authors
+                .AsNoTracking()
                 .FirstOrDefaultAsync(author => author.Id == id);
         }
 
@@ -82,19 +83,26 @@ namespace DAL.Repositories
             await _dbContext.SaveChangesAsync();
             return author;
         }
-
+        
+        // returns void
         public async Task Update(Author author)
         {
-            await _dbContext.Authors
-                .Where(a => a.Id == author.Id) // каких нужно обновить
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(a => a.FirstName, author.FirstName)
-                    .SetProperty(a => a.LastName, author.LastName)
-                    .SetProperty(a => a.Email, author.Email)
-                    .SetProperty(a => a.BirthDate, author.BirthDate)
-                );
+            _dbContext.Authors.Update(author);
+            await _dbContext.SaveChangesAsync();
         }
-        
+
+        //public async Task Update2(Author author)
+        //{
+        //    await _dbContext.Authors
+        //        .Where(a => a.Id == author.Id) // каких нужно обновить
+        //        .ExecuteUpdateAsync(s => s
+        //            .SetProperty(a => a.FirstName, author.FirstName)
+        //            .SetProperty(a => a.LastName, author.LastName)
+        //            .SetProperty(a => a.Email, author.Email)
+        //            .SetProperty(a => a.BirthDate, author.BirthDate)
+        //        );
+        //}
+
         /// <returns>NULL</returns>
         /// <returns>Author</returns>
         public async Task<Author?> DeleteById(Guid id)

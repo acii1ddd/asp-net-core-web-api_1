@@ -78,16 +78,78 @@ namespace BLL.Services
             return _mapper.Map<AuthorDTO>(author);
         }
 
-        /// <summary>
-        /// update method 
-        /// </summary>
-        
-        public async Task<AuthorDTO> DeleteById(Guid id)
+        public async Task UpdateFull(AuthorDTO author)
         {
-            var author = await _authorRepository.DeleteById(id);
+            var existingAuthorById = await _authorRepository.GetById(author.Id);
+            // лучше переделать это на паттерн result
+            if (existingAuthorById == null)
+            {
+                throw new InvalidOperationException($"Author with ID {author.Id} not found.");
+            }
+
+            // если обновляем на тот же email - то пропускаем
+            if (!string.Equals(existingAuthorById.Email, author.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                var existingAuthorByEmail = await _authorRepository.FindByEmail(author.Email);
+
+                if (existingAuthorByEmail != null)
+                {
+                    throw new InvalidOperationException($"Author with email {author.Email} already exists.");
+                }
+            }
+
+            // is valid
+            await _authorRepository.Update(_mapper.Map<Author>(author));
+        }
+
+        public async Task UpdatePartial(AuthorDTO author)
+        {
+            var existingAuthor = await _authorRepository.GetById(author.Id);
+            // лучше переделать это на паттерн result
+            if (existingAuthor == null)
+            {
+                throw new InvalidOperationException($"Author with ID {author.Id} not found.");
+            }
+
+            // update existing fields
+            if (!string.IsNullOrEmpty(author.FirstName))
+            {
+                existingAuthor.FirstName = author.FirstName;
+            }
+            if (!string.IsNullOrEmpty(author.LastName))
+            {
+                existingAuthor.LastName = author.LastName;
+            }
+            if (!string.IsNullOrEmpty(author.Email))
+            {
+                // если обновляем на тот же email - то пропускаем
+                if (!string.Equals(existingAuthor.Email, author.Email, StringComparison.OrdinalIgnoreCase))
+                {
+                    var existingAuthorByEmail = await _authorRepository.FindByEmail(author.Email);
+
+                    if (existingAuthorByEmail != null)
+                    {
+                        throw new InvalidOperationException($"Author with email {author.Email} already exists.");
+                    }
+                }
+
+                existingAuthor.Email = author.Email;
+            }
+            if (author.BirthDate != DateTime.MinValue)
+            {
+                existingAuthor.BirthDate = DateTime.SpecifyKind(author.BirthDate, DateTimeKind.Utc);
+            }
+
+            // is valid
+            await _authorRepository.Update(existingAuthor);
+        }
+
+        public async Task<AuthorDTO> DeleteById(Guid authorId)
+        {
+            var author = await _authorRepository.DeleteById(authorId);
             if (author == null)
             {
-                throw new InvalidOperationException($"Author with ID {id} not found.");
+                throw new InvalidOperationException($"Author with ID {authorId} not found.");
             }
 
             return _mapper.Map<AuthorDTO>(author);
