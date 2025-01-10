@@ -1,6 +1,7 @@
 ﻿using DAL.Context;
 using DAL.Entities;
 using DAL.Interfaces;
+using FluentResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace DAL.Repositories
@@ -85,10 +86,11 @@ namespace DAL.Repositories
         }
         
         // returns void
-        public async Task Update(Author author)
+        public async Task<Guid> Update(Author author)
         {
             _dbContext.Authors.Update(author);
             await _dbContext.SaveChangesAsync();
+            return author.Id;
         }
 
         //public async Task Update2(Author author)

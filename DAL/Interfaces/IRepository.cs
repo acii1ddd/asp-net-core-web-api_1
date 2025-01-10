@@ -14,6 +14,6 @@ namespace DAL.Interfaces
         
         public Task<T?> DeleteById(Guid id);
 
-        public Task Update(Author author);
+        public Task<Guid> Update(Author author);
     }
 }
