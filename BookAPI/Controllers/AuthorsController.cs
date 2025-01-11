@@ -120,26 +120,26 @@ namespace BookAPI.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetAuthorByPage([FromQuery] int page, [FromQuery] int pageSize)
         {
-            try
-            {
-                var authorsDTO = await _authorService.GetByPage(page, pageSize);
-                
-                // mapping
-                var results = authorsDTO.Select(author => new GetAuthorResponse(
-                    author.Id,
-                    author.FirstName,
-                    author.LastName,
-                    author.Email,
-                    author.BirthDate
-                ));
+            var authorsDTOs = await _authorService.GetByPage(page, pageSize);
 
-                return Ok(results);
-            }
-            catch (Exception ex)
+            if (authorsDTOs.IsFailed)
             {
-                _logger.LogError(ex.Message);
-                return BadRequest(ex.Message);
+                authorsDTOs.Errors.ForEach(error =>
+                    _logger.LogError(error.Message));
+
+                return BadRequest(authorsDTOs.Errors);
             }
+                
+            // mapping
+            var results = authorsDTOs.Value.Select(author => new GetAuthorResponse(
+                author.Id,
+                author.FirstName,
+                author.LastName,
+                author.Email,
+                author.BirthDate
+            ));
+
+            return Ok(results);
         }
 
         // Authors
@@ -156,25 +156,25 @@ namespace BookAPI.Controllers
                 Email = request.Email,
                 BirthDate = request.BirthDate
             };
-
-            try
+            
+            // Result<T> type
+            var createdAuthor = await _authorService.Add(author);
+            if (createdAuthor.IsFailed)
             {
-                var createdAuthor = await _authorService.Add(author);
+                createdAuthor.Errors.ForEach(error =>
+                    _logger.LogError(error.Message));
 
-                var result = new GetAuthorResponse(
-                    createdAuthor.Id,
-                    createdAuthor.FirstName,
-                    createdAuthor.LastName,
-                    createdAuthor.Email,
-                    createdAuthor.BirthDate
-                );
-                return Ok(result);
+                return BadRequest(createdAuthor.Errors);
             }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogError(ex.Message);
-                return BadRequest(ex.Message);
-            }
+
+            var result = new GetAuthorResponse(
+                createdAuthor.Value.Id,
+                createdAuthor.Value.FirstName,
+                createdAuthor.Value.LastName,
+                createdAuthor.Value.Email,
+                createdAuthor.Value.BirthDate
+            );
+            return Ok(result);
         }
 
         /// <summary>
@@ -193,27 +193,26 @@ namespace BookAPI.Controllers
                 return BadRequest("The BirthDate field is required.");
             }
 
-            try
+            var author = new AuthorDTO
             {
-                var author = new AuthorDTO
-                {
-                    Id = authorId,
-                    FirstName = request.FirstName,
-                    LastName = request.LastName,
-                    Email = request.Email,
-                    BirthDate = DateTime.SpecifyKind(request.BirthDate, DateTimeKind.Utc) // in utc format
-                };
+                Id = authorId,
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                Email = request.Email,
+                BirthDate = DateTime.SpecifyKind(request.BirthDate, DateTimeKind.Utc) // in utc format
+            };
 
-                await _authorService.UpdateFull(author);
-
-                var response = new UpdateAuthorResponse(authorId);
-                return Ok(response);
-            }
-            catch (InvalidOperationException ex)
+            var result = await _authorService.UpdateFull(author);
+            if (result.IsFailed)
             {
-                _logger.LogError(ex.Message);
-                return BadRequest(ex.Message);
+                result.Errors.ForEach(error =>
+                    _logger.LogError(error.Message));
+
+                return BadRequest(result.Errors);
             }
+
+            var response = new UpdateAuthorResponse(result.Value);
+            return Ok(response);
         }
 
         /// <summary>
@@ -226,28 +225,28 @@ namespace BookAPI.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> PartialUpdate([FromRoute] Guid authorId, [FromBody] PartialUpdateAuthorRequest request)
         {
-            try
+            // все null если не указаны все поля (ничего не обновится)
+            var author = new AuthorDTO
             {
-                // все null если не указаны все поля (ничего не обновится)
-                var author = new AuthorDTO
-                {
-                    Id = authorId,
-                    FirstName = request.FirstName ?? string.Empty,
-                    LastName = request.LastName ?? string.Empty,
-                    Email = request.Email ?? string.Empty,
-                    BirthDate = request.BirthDate ?? DateTime.MinValue
-                };
+                Id = authorId,
+                FirstName = request.FirstName ?? string.Empty,
+                LastName = request.LastName ?? string.Empty,
+                Email = request.Email ?? string.Empty,
+                BirthDate = request.BirthDate ?? DateTime.MinValue
+            };
 
-                await _authorService.UpdatePartial(author);
-
-                var response = new UpdateAuthorResponse(authorId);
-                return Ok(response);
-            }
-            catch (InvalidOperationException ex)
+            var result = await _authorService.UpdatePartial(author);
+            if (result.IsFailed)
             {
-                _logger.LogError(ex.Message);
-                return BadRequest(ex.Message);
+                result.Errors.ForEach(error =>
+                    _logger.LogError(error.Message));
+
+                return BadRequest(result.Errors);
             }
+
+            var response = new UpdateAuthorResponse(result.Value);
+            return Ok(response);
+            
         }
 
         // Authors/{Guid}
@@ -256,24 +255,24 @@ namespace BookAPI.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete([FromRoute] Guid authorId)
         {
-            try
-            {
-                var deletedAuthor = await _authorService.DeleteById(authorId);
+            var deletedAuthor = await _authorService.DeleteById(authorId);
 
-                var result = new GetAuthorResponse(
-                    deletedAuthor.Id,
-                    deletedAuthor.FirstName,
-                    deletedAuthor.LastName,
-                    deletedAuthor.Email,
-                    deletedAuthor.BirthDate
-                );
-                return Ok(result);
-            }
-            catch (InvalidOperationException ex)
+            if (deletedAuthor.IsFailed)
             {
-                _logger.LogError(ex.Message);
-                return BadRequest(ex.Message);
+                deletedAuthor.Errors.ForEach(error =>
+                                    _logger.LogError(error.Message));
+
+                return BadRequest(deletedAuthor.Errors);
             }
+
+            var result = new GetAuthorResponse(
+                deletedAuthor.Value.Id,
+                deletedAuthor.Value.FirstName,
+                deletedAuthor.Value.LastName,
+                deletedAuthor.Value.Email,
+                deletedAuthor.Value.BirthDate
+            );
+            return Ok(result);
         }
     }
 }

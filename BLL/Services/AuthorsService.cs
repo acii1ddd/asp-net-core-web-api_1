@@ -3,6 +3,7 @@ using BLL.DTOs;
 using BLL.ServicesInterfaces;
 using DAL.Entities;
 using DAL.Interfaces;
+using FluentResults;
 using Microsoft.Extensions.Logging;
 
 namespace BLL.Services
@@ -53,38 +54,39 @@ namespace BLL.Services
         }
 
         // pagination
-        public async Task<List<AuthorDTO>> GetByPage(int page, int pageSize)
+        public async Task<Result<List<AuthorDTO>>> GetByPage(int page, int pageSize)
         {
             if (page <= 0 || pageSize <= 0)
             {
-                throw new ArgumentException("Page and pageSize must be greater than zero.");
+                return Result.Fail("Page and pageSize must be greater than zero.");
             }
 
             var authors = await _authorRepository.GetByPage(page, pageSize);
             return _mapper.Map<List<AuthorDTO>>(authors);
         }
 
-        public async Task<AuthorDTO> Add(AuthorDTO authorDTO)
+        // with result pattern
+        public async Task<Result<AuthorDTO>> Add(AuthorDTO authorDTO)
         {
             var existingAuthor = await _authorRepository.FindByEmail(authorDTO.Email);
-            // лучше переделать это на паттерн result
             if (existingAuthor != null)
             {
-                throw new InvalidOperationException($"Author with email {authorDTO.Email} already exists.");
+                return Result.Fail(new Error($"Author with email '{authorDTO.Email}' already exists."));
             }
 
             authorDTO.Id = Guid.NewGuid();
             var author = await _authorRepository.Add(_mapper.Map<Author>(authorDTO));
+
+            // AuthorDTO сам неявно оборачивается в Result при возврате (implicit operator)
             return _mapper.Map<AuthorDTO>(author);
         }
 
-        public async Task UpdateFull(AuthorDTO author)
+        public async Task<Result<Guid>> UpdateFull(AuthorDTO author)
         {
             var existingAuthorById = await _authorRepository.GetById(author.Id);
-            // лучше переделать это на паттерн result
             if (existingAuthorById == null)
             {
-                throw new InvalidOperationException($"Author with ID {author.Id} not found.");
+                return Result.Fail(new Error($"Author with ID '{author.Id}' not found."));
             }
 
             // если обновляем на тот же email - то пропускаем
@@ -94,21 +96,21 @@ namespace BLL.Services
 
                 if (existingAuthorByEmail != null)
                 {
-                    throw new InvalidOperationException($"Author with email {author.Email} already exists.");
+                    return Result.Fail(new Error($"Author with email '{author.Email}' already exists."));
                 }
             }
 
             // is valid
-            await _authorRepository.Update(_mapper.Map<Author>(author));
+            var id = await _authorRepository.Update(_mapper.Map<Author>(author));
+            return Result.Ok(id); // явно оборачиваем (более читаемо)
         }
 
-        public async Task UpdatePartial(AuthorDTO author)
+        public async Task<Result<Guid>> UpdatePartial(AuthorDTO author)
         {
             var existingAuthor = await _authorRepository.GetById(author.Id);
-            // лучше переделать это на паттерн result
             if (existingAuthor == null)
             {
-                throw new InvalidOperationException($"Author with ID {author.Id} not found.");
+                return Result.Fail(new Error($"Author with ID '{author.Id}' not found."));
             }
 
             // update existing fields
@@ -129,7 +131,7 @@ namespace BLL.Services
 
                     if (existingAuthorByEmail != null)
                     {
-                        throw new InvalidOperationException($"Author with email {author.Email} already exists.");
+                        return Result.Fail(new Error($"Author with email '{author.Email}' already exists."));
                     }
                 }
 
@@ -141,15 +143,16 @@ namespace BLL.Services
             }
 
             // is valid
-            await _authorRepository.Update(existingAuthor);
+            var id = await _authorRepository.Update(existingAuthor);
+            return Result.Ok(id);
         }
 
-        public async Task<AuthorDTO> DeleteById(Guid authorId)
+        public async Task<Result<AuthorDTO>> DeleteById(Guid authorId)
         {
             var author = await _authorRepository.DeleteById(authorId);
             if (author == null)
             {
-                throw new InvalidOperationException($"Author with ID {authorId} not found.");
+                return Result.Fail(new Error($"Author with ID '{authorId}' not found."));
             }
 
             return _mapper.Map<AuthorDTO>(author);
