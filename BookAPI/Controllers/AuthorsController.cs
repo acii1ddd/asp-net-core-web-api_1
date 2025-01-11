@@ -19,7 +19,7 @@ namespace BookAPI.Controllers
             this._authorService = authorService;
         }
 
-        // /Authors (get all authors)
+        // /Authors (all authors)
         [HttpGet]
         // ������ ���� ���� �� ������
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<GetAuthorResponse>))]
