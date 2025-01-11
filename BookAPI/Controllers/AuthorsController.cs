@@ -19,9 +19,9 @@ namespace BookAPI.Controllers
             this._authorService = authorService;
         }
 
-        // /Authors (all authors)
+        // /Authors (get all authors)
         [HttpGet]
-        // пустой лист либо не пустой
+        // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<GetAuthorResponse>))]
         public async Task<IActionResult> GetAll()
         {
@@ -65,7 +65,7 @@ namespace BookAPI.Controllers
             return Ok(authors);
         }
 
-        // /Authors/{Guid} (просто из роута)
+        // /Authors/{Guid} (пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ)
         [HttpGet("{authorId:Guid}")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(GetAuthorResponse))]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -225,7 +225,7 @@ namespace BookAPI.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> PartialUpdate([FromRoute] Guid authorId, [FromBody] PartialUpdateAuthorRequest request)
         {
-            // все null если не указаны все поля (ничего не обновится)
+            // пїЅпїЅпїЅ null пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
             var author = new AuthorDTO
             {
                 Id = authorId,
