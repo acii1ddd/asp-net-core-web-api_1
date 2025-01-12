@@ -4,6 +4,7 @@ using BookAPI.ContractsDTOs.Responses;
 using Microsoft.AspNetCore.Mvc;
 using BLL.ServicesInterfaces;
 using BookAPI.Cache;
+using System.Diagnostics;
 
 namespace BookAPI.Controllers
 {
@@ -29,7 +30,11 @@ namespace BookAPI.Controllers
         public async Task<IActionResult> GetAll()
         {
             // cache
+            var stopwatch = Stopwatch.StartNew();
             var cachedAuthors = await _cacheService.GetDataAsync<IEnumerable<AuthorDTO>>("Authors");
+            stopwatch.Stop();
+            _logger.LogInformation($"Cache retrieval time: {stopwatch.ElapsedMilliseconds} ms");
+
             if (cachedAuthors != null)
             {
                 var cachedAuthorsResponse = cachedAuthors.Select(author => new GetAuthorResponse(
@@ -43,7 +48,10 @@ namespace BookAPI.Controllers
             }
 
             // db
+            stopwatch = Stopwatch.StartNew();
             var dbAuthors = await _authorService.GetAll();
+            stopwatch.Stop();
+            _logger.LogInformation($"Database retrieval time: {stopwatch.ElapsedMilliseconds} ms");
 
             // кэшируем либо пустой результат либо нет
             var isSuccess = await _cacheService.SetDataAsync("Authors", dbAuthors, DateTimeOffset.Now.AddMinutes(1));
