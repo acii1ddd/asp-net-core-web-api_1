@@ -6,6 +6,7 @@ using DAL.Context;
 using DAL.Interfaces;
 using DAL.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 using StackExchange.Redis;
 
 namespace BookAPI
@@ -58,6 +59,21 @@ namespace BookAPI
                 typeof(AuthorProfile)
             );
 
+            // logging
+            //var logger = new LoggerConfiguration()
+            //        .ReadFrom.Configuration(builder.Configuration)
+            //        .CreateLogger();
+
+            //builder.Services.AddLogging(loggingBuider =>
+            //{    
+            //    loggingBuider.AddSerilog(logger, true); // true - dispose
+            //});
+
+            builder.Host.UseSerilog((context, conf) =>
+            {
+                conf.ReadFrom.Configuration(context.Configuration);
+            });
+
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
@@ -67,13 +83,28 @@ namespace BookAPI
                 app.UseSwaggerUI();
             }
 
+            app.UseSerilogRequestLogging();
+
             app.UseHttpsRedirection();
 
             app.UseAuthorization();
 
             app.MapControllers();
 
-            app.Run();
+            try
+            {
+                //logger.Information("Application started");
+                app.Run();
+            }
+            catch (Exception ex)
+            {
+                //logger.Fatal(ex, "Application crushed");
+            }
+            finally
+            {
+                // может потерять логи !!
+                //logger.Dispose();
+            }
         }
     }
 }
