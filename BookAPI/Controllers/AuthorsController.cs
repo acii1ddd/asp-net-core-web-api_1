@@ -3,32 +3,52 @@ using BookAPI.ContractsDTOs.Requests;
 using BookAPI.ContractsDTOs.Responses;
 using Microsoft.AspNetCore.Mvc;
 using BLL.ServicesInterfaces;
+using BookAPI.Cache;
 
 namespace BookAPI.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    //[Route("[controller]")]
+    [Route("authors")]
     public class AuthorsController : ControllerBase
     {
         private readonly ILogger<AuthorsController> _logger;
         private readonly IAuthorService _authorService;
+        private readonly ICacheService _cacheService;
 
-        public AuthorsController(ILogger<AuthorsController> logger, IAuthorService authorService)
+        public AuthorsController(ILogger<AuthorsController> logger, IAuthorService authorService, ICacheService cacheService)
         {
             _logger = logger;
             this._authorService = authorService;
+            _cacheService = cacheService;
         }
 
         // /Authors (all authors)
         [HttpGet]
-        // ������ ���� ���� �� ������
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<GetAuthorResponse>))]
         public async Task<IActionResult> GetAll()
         {
-            // authors only
-            var authorsDTO = await _authorService.GetAll();
+            // cache
+            var cachedAuthors = await _cacheService.GetDataAsync<IEnumerable<AuthorDTO>>("Authors");
+            if (cachedAuthors != null)
+            {
+                var cachedAuthorsResponse = cachedAuthors.Select(author => new GetAuthorResponse(
+                    author.Id,
+                    author.FirstName,
+                    author.LastName,
+                    author.Email,
+                    author.BirthDate
+                ));
+                return Ok(cachedAuthorsResponse);
+            }
 
-            var authors = authorsDTO.Select(author => new GetAuthorResponse(
+            // db
+            var dbAuthors = await _authorService.GetAll();
+
+            // кэшируем либо пустой результат либо нет
+            var isSuccess = await _cacheService.SetDataAsync("Authors", dbAuthors, DateTimeOffset.Now.AddMinutes(1));
+
+            var dbAuthorsResponse = dbAuthors.Select(author => new GetAuthorResponse(
                 author.Id,
                 author.FirstName,
                 author.LastName,
@@ -36,7 +56,7 @@ namespace BookAPI.Controllers
                 author.BirthDate
             ));
 
-            return Ok(authors);
+            return Ok(dbAuthorsResponse);
         }
 
         // /Authors/WithBooks
@@ -225,7 +245,6 @@ namespace BookAPI.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> PartialUpdate([FromRoute] Guid authorId, [FromBody] PartialUpdateAuthorRequest request)
         {
-            // ��� null ���� �� ������� ��� ���� (������ �� ���������)
             var author = new AuthorDTO
             {
                 Id = authorId,

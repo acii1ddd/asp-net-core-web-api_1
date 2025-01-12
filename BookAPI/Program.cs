@@ -1,10 +1,12 @@
 using BLL.Profiles;
 using BLL.Services;
 using BLL.ServicesInterfaces;
+using BookAPI.Cache;
 using DAL.Context;
 using DAL.Interfaces;
 using DAL.Repositories;
 using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
 
 namespace BookAPI
 {
@@ -28,11 +30,28 @@ namespace BookAPI
                 options.UseNpgsql(configuration.GetConnectionString("BookDbConnection"));
             });
 
+            ///
+            /// AddTransient - Создает новый экземпляр каждый раз, когда он запрашивается
+            /// AddScoped - Создает один экземпляр на каждый запрос (HTTP request)
+            /// AddSingleton - Создает один экземпляр на все время жизни приложения
+            ///
+
             // custom repositories
-            builder.Services.AddTransient<IAuthorRepository, AuthorsRepository>();
+            builder.Services.AddScoped<IAuthorRepository, AuthorsRepository>();
 
             // custom services
-            builder.Services.AddTransient<IAuthorService, AuthorsService>();
+            builder.Services.AddScoped<IAuthorService, AuthorsService>();
+
+            // redis
+            builder.Services.AddSingleton<IConnectionMultiplexer>(servicProvider =>
+            {
+                return ConnectionMultiplexer.Connect(
+                    configuration.GetConnectionString("RedisConnection")
+                        ?? throw new Exception("Сonnection string for 'RedisConnection' not found.")
+                );
+            });
+
+            builder.Services.AddScoped<ICacheService, CacheService>();
 
             // mapping profiles
             builder.Services.AddAutoMapper(
