@@ -6,14 +6,14 @@ namespace DAL.Interfaces
     {
         public Task<List<T>> GetAll();
 
-        public Task<Author?> GetById(Guid id);
+        public Task<T?> GetById(Guid id);
 
-        public Task<List<Author>> GetByPage(int page, int pageSize);
+        public Task<List<T>> GetByPage(int page, int pageSize);
 
-        public Task<Author> Add(Author author);
+        public Task<T> Add(T author);
         
         public Task<T?> DeleteById(Guid id);
 
-        public Task<Guid> Update(Author author);
+        public Task<Guid> Update(T author);
     }
 }
