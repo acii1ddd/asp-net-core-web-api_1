@@ -1,6 +1,6 @@
-﻿namespace BookAPI.ContractsDTOs.Responses
+﻿namespace BookAPI.Contracts.Responses
 {
-    public record GetBookResponse (
+    public record GetBookResponse(
         Guid Id,
         string Title,
         int ReleaseYear,

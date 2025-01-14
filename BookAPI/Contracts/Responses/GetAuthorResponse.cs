@@ -1,8 +1,9 @@
-﻿namespace BookAPI.ContractsDTOs.Requests
+﻿namespace BookAPI.Contracts.Responses
 {
     // poco модели
     // неизменяемый (значения свойств - только при инициализации)
-    public record AddAuthorRequest(
+    public record GetAuthorResponse(
+        Guid Id, 
         string FirstName, 
         string LastName, 
         string Email, 
