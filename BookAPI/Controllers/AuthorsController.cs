@@ -1,10 +1,11 @@
 using BLL.DTOs;
-using BookAPI.ContractsDTOs.Requests;
-using BookAPI.ContractsDTOs.Responses;
 using Microsoft.AspNetCore.Mvc;
 using BLL.ServicesInterfaces;
 using BookAPI.Cache;
 using System.Diagnostics;
+using BookAPI.Contracts.Responses;
+using BookAPI.Contracts.Requests;
+using AutoMapper;
 
 namespace BookAPI.Controllers
 {
@@ -16,12 +17,14 @@ namespace BookAPI.Controllers
         private readonly ILogger<AuthorsController> _logger;
         private readonly IAuthorService _authorService;
         private readonly ICacheService _cacheService;
+        private readonly IMapper _mapper;
 
-        public AuthorsController(ILogger<AuthorsController> logger, IAuthorService authorService, ICacheService cacheService)
+        public AuthorsController(ILogger<AuthorsController> logger, IAuthorService authorService, ICacheService cacheService, IMapper mapper)
         {
             _logger = logger;
             this._authorService = authorService;
             _cacheService = cacheService;
+            _mapper = mapper;
         }
 
         // /Authors (all authors)
@@ -37,34 +40,19 @@ namespace BookAPI.Controllers
 
             if (cachedAuthors != null)
             {
-                var cachedAuthorsResponse = cachedAuthors.Select(author => new GetAuthorResponse(
-                    author.Id,
-                    author.FirstName,
-                    author.LastName,
-                    author.Email,
-                    author.BirthDate
-                ));
-                return Ok(cachedAuthorsResponse);
+                return Ok(_mapper.Map<IEnumerable<GetAuthorResponse>>(cachedAuthors));
             }
 
             // db
-            stopwatch = Stopwatch.StartNew();
+            var stopwatch2 = Stopwatch.StartNew();
             var dbAuthors = await _authorService.GetAll();
-            stopwatch.Stop();
-            _logger.LogInformation($"Database retrieval time: {stopwatch.ElapsedMilliseconds} ms");
+            stopwatch2.Stop();
+            _logger.LogInformation($"Database retrieval time: {stopwatch2.ElapsedMilliseconds} ms");
 
             // кэшируем либо пустой результат либо нет
             var isSuccess = await _cacheService.SetDataAsync("Authors", dbAuthors, DateTimeOffset.Now.AddMinutes(1));
 
-            var dbAuthorsResponse = dbAuthors.Select(author => new GetAuthorResponse(
-                author.Id,
-                author.FirstName,
-                author.LastName,
-                author.Email,
-                author.BirthDate
-            ));
-
-            return Ok(dbAuthorsResponse);
+            return Ok(_mapper.Map<IEnumerable<GetAuthorResponse>>(dbAuthors));
         }
 
         // /Authors/WithBooks
@@ -73,49 +61,25 @@ namespace BookAPI.Controllers
         public async Task<IActionResult> GetAllWithBooks()
         {
             // authors with their books
-            var authorsDTO = await _authorService.GetAllWithBooks();
-
-            var authors = authorsDTO.Select(author => new GetAuthorWithBooksResponse(
-                author.Id,
-                author.FirstName,
-                author.LastName,
-                author.Email,
-                author.BirthDate,
-                author.Books.Select(book => new GetBookResponse(
-                    book.Id,
-                    book.Title,
-                    book.ReleaseYear,
-                    book.Price,
-                    book.AuthorId
-                )).ToList()
-            ));
-
-            return Ok(authors);
+            var authors = await _authorService.GetAllWithBooks();
+            return Ok(_mapper.Map<IEnumerable<GetAuthorWithBooksResponse>>(authors));
         }
 
-        // /Authors/{Guid} (������ �� �����)
+        // /Authors/{Guid}
         [HttpGet("{authorId:Guid}")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(GetAuthorResponse))]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetAuthorById([FromRoute] Guid authorId)
         {
-            var authorDTO = await _authorService.GetById(authorId);
+            var author = await _authorService.GetById(authorId);
 
-            if (authorDTO == null)
+            if (author == null)
             {
                 _logger.LogError($"Author with ID {authorId} not found.");
                 return NotFound($"Author with ID {authorId} was not found.");
             }
 
-            var author = new GetAuthorResponse(
-                authorDTO.Id,
-                authorDTO.FirstName,
-                authorDTO.LastName,
-                authorDTO.Email,
-                authorDTO.BirthDate
-            );
-
-            return Ok(author);
+            return Ok(_mapper.Map<GetAuthorResponse>(author));
         }
 
         // Authors/page?firstName=string&lastName=string
@@ -123,23 +87,16 @@ namespace BookAPI.Controllers
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<GetAuthorResponse>))]
         public async Task<IActionResult> GetAuthorByFilter([FromQuery] string? firstName, [FromQuery] string? lastName)
         {
-            var authorsDTO = await _authorService.GetByFilter(firstName, lastName);
+            var authors = await _authorService.GetByFilter(firstName, lastName);
 
-            if (authorsDTO.Count == 0)
+            if (authors.Count == 0)
             {
                 _logger.LogWarning($"Author with firstName {firstName} and lastName {lastName} not found.");
                 return Ok(new List<GetAuthorResponse>());
             }
-            // mapping
-            var results = authorsDTO.Select(author => new GetAuthorResponse(
-                author.Id,
-                author.FirstName,
-                author.LastName,
-                author.Email,
-                author.BirthDate
-            ));
 
-            return Ok(results);
+            // mapping
+            return Ok(_mapper.Map<IEnumerable<GetAuthorResponse>>(authors));
         }
 
         // Authors/page?page=int&pageSize=int
@@ -148,26 +105,18 @@ namespace BookAPI.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetAuthorByPage([FromQuery] int page, [FromQuery] int pageSize)
         {
-            var authorsDTOs = await _authorService.GetByPage(page, pageSize);
+            var authors = await _authorService.GetByPage(page, pageSize);
 
-            if (authorsDTOs.IsFailed)
+            if (authors.IsFailed)
             {
-                authorsDTOs.Errors.ForEach(error =>
+                authors.Errors.ForEach(error =>
                     _logger.LogError(error.Message));
 
-                return BadRequest(authorsDTOs.Errors);
+                return BadRequest(authors.Errors);
             }
                 
             // mapping
-            var results = authorsDTOs.Value.Select(author => new GetAuthorResponse(
-                author.Id,
-                author.FirstName,
-                author.LastName,
-                author.Email,
-                author.BirthDate
-            ));
-
-            return Ok(results);
+            return Ok(_mapper.Map<IEnumerable<GetAuthorResponse>>(authors.Value));
         }
 
         // Authors
@@ -176,15 +125,16 @@ namespace BookAPI.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Add([FromBody] AddAuthorRequest request)
         {
-            // gives guid id in service
-            var author = new AuthorDTO
+            // date is not specified in json
+            if (request.BirthDate == DateTime.MinValue)
             {
-                FirstName = request.FirstName,
-                LastName = request.LastName,
-                Email = request.Email,
-                BirthDate = request.BirthDate
-            };
-            
+                return BadRequest("The BirthDate field is required.");
+            }
+
+            // gives guid id in service
+            var author = _mapper.Map<AuthorDTO>(request);
+            author.BirthDate = DateTime.SpecifyKind(request.BirthDate, DateTimeKind.Utc); // with utc kind
+
             // Result<T> type
             var createdAuthor = await _authorService.Add(author);
             if (createdAuthor.IsFailed)
@@ -195,14 +145,7 @@ namespace BookAPI.Controllers
                 return BadRequest(createdAuthor.Errors);
             }
 
-            var result = new GetAuthorResponse(
-                createdAuthor.Value.Id,
-                createdAuthor.Value.FirstName,
-                createdAuthor.Value.LastName,
-                createdAuthor.Value.Email,
-                createdAuthor.Value.BirthDate
-            );
-            return Ok(result);
+            return Ok(_mapper.Map<GetAuthorResponse>(createdAuthor.Value));
         }
 
         /// <summary>
@@ -221,14 +164,11 @@ namespace BookAPI.Controllers
                 return BadRequest("The BirthDate field is required.");
             }
 
-            var author = new AuthorDTO
-            {
-                Id = authorId,
-                FirstName = request.FirstName,
-                LastName = request.LastName,
-                Email = request.Email,
-                BirthDate = DateTime.SpecifyKind(request.BirthDate, DateTimeKind.Utc) // in utc format
-            };
+            var author = _mapper.Map<AuthorDTO>(request);
+            author.Id = authorId;
+
+            // чтобы entity мог впихнуть DateTime в тип timestamp with timezone в postgres
+            author.BirthDate = DateTime.SpecifyKind(request.BirthDate, DateTimeKind.Utc); // with utc kind
 
             var result = await _authorService.UpdateFull(author);
             if (result.IsFailed)
@@ -253,14 +193,8 @@ namespace BookAPI.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> PartialUpdate([FromRoute] Guid authorId, [FromBody] PartialUpdateAuthorRequest request)
         {
-            var author = new AuthorDTO
-            {
-                Id = authorId,
-                FirstName = request.FirstName ?? string.Empty,
-                LastName = request.LastName ?? string.Empty,
-                Email = request.Email ?? string.Empty,
-                BirthDate = request.BirthDate ?? DateTime.MinValue
-            };
+            var author = _mapper.Map<AuthorDTO>(request);
+            author.Id = authorId;
 
             var result = await _authorService.UpdatePartial(author);
             if (result.IsFailed)
@@ -273,7 +207,6 @@ namespace BookAPI.Controllers
 
             var response = new UpdateAuthorResponse(result.Value);
             return Ok(response);
-            
         }
 
         // Authors/{Guid}
@@ -287,19 +220,12 @@ namespace BookAPI.Controllers
             if (deletedAuthor.IsFailed)
             {
                 deletedAuthor.Errors.ForEach(error =>
-                                    _logger.LogError(error.Message));
+                    _logger.LogError(error.Message));
 
                 return BadRequest(deletedAuthor.Errors);
             }
 
-            var result = new GetAuthorResponse(
-                deletedAuthor.Value.Id,
-                deletedAuthor.Value.FirstName,
-                deletedAuthor.Value.LastName,
-                deletedAuthor.Value.Email,
-                deletedAuthor.Value.BirthDate
-            );
-            return Ok(result);
+            return Ok(_mapper.Map<GetAuthorResponse>(deletedAuthor.Value));
         }
     }
 }

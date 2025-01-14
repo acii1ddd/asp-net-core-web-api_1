@@ -139,6 +139,7 @@ namespace BLL.Services
             }
             if (author.BirthDate != DateTime.MinValue)
             {
+                // для DateTime в timestamp with timezone
                 existingAuthor.BirthDate = DateTime.SpecifyKind(author.BirthDate, DateTimeKind.Utc);
             }
 

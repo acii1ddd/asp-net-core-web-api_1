@@ -1,4 +1,4 @@
-﻿namespace BookAPI.ContractsDTOs.Requests
+﻿namespace BookAPI.Contracts.Requests
 {
     // poco модели
     // неизменяемый (значения свойств - только при инициализации)

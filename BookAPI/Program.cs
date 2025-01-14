@@ -2,6 +2,7 @@ using BLL.Profiles;
 using BLL.Services;
 using BLL.ServicesInterfaces;
 using BookAPI.Cache;
+using BookAPI.Profiles;
 using DAL.Context;
 using DAL.Interfaces;
 using DAL.Repositories;
@@ -56,7 +57,10 @@ namespace BookAPI
 
             // mapping profiles
             builder.Services.AddAutoMapper(
-                typeof(AuthorProfile)
+                typeof(AuthorProfile),
+                typeof(BookProfile),
+                typeof(ApiMappingRequestsProfile),
+                typeof(ApiMappingResponsesProfile)
             );
 
             // logging
@@ -83,6 +87,7 @@ namespace BookAPI
                 app.UseSwaggerUI();
             }
 
+            // more info for logs
             app.UseSerilogRequestLogging();
 
             app.UseHttpsRedirection();
@@ -91,19 +96,21 @@ namespace BookAPI
 
             app.MapControllers();
 
+            var logger = app.Services.GetRequiredService<ILogger<Program>>();
+
             try
             {
-                //logger.Information("Application started");
+                logger.LogInformation("Application started");
                 app.Run();
             }
             catch (Exception ex)
             {
-                //logger.Fatal(ex, "Application crushed");
+                logger.LogError(ex, "Application crashed");
             }
             finally
             {
                 // может потерять логи !!
-                //logger.Dispose();
+                logger.LogInformation("Application stopped!");
             }
         }
     }

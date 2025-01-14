@@ -1,4 +1,4 @@
-﻿namespace BookAPI.ContractsDTOs.Responses
+﻿namespace BookAPI.Contracts.Responses
 {
     public record GetAuthorWithBooksResponse (
         Guid id, 

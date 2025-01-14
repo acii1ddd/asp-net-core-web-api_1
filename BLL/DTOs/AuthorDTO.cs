@@ -1,6 +1,4 @@
-﻿using DAL.Entities;
-
-namespace BLL.DTOs
+﻿namespace BLL.DTOs
 {
     public class AuthorDTO
     {
@@ -14,6 +12,6 @@ namespace BLL.DTOs
 
         public DateTime BirthDate { get; set; }
 
-        public List<Book> Books { get; set; } = [];
+        public List<BookDTO> Books { get; set; } = [];
     }
 }

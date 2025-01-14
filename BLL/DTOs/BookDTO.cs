@@ -1,6 +1,8 @@
-﻿namespace DAL.Entities
+﻿using DAL.Entities;
+
+namespace BLL.DTOs
 {
-    public class Book
+    public class BookDTO
     {
         public Guid Id { get; set; }
 
@@ -12,6 +14,8 @@
 
         public Guid AuthorId { get; set; }
 
+        // для не зацикливания сериализации в json
+        //[JsonIgnore]
         public Author? Author { get; set; }
 
         public List<Genre> Genres { get; set; } = [];
