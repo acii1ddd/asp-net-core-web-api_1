@@ -15,5 +15,7 @@
         public Task<bool> SetDataAsync<T>(string key, T value, DateTimeOffset expirationTime);
 
         public Task<bool> RemoveDataAsync(string key);
+
+        public Task RemoveListAsync(IEnumerable<string> keys);
     }
 }

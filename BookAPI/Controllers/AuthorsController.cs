@@ -2,7 +2,6 @@ using BLL.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using BLL.ServicesInterfaces;
 using BookAPI.Cache;
-using System.Diagnostics;
 using BookAPI.Contracts.Responses;
 using BookAPI.Contracts.Requests;
 using AutoMapper;
@@ -22,7 +21,7 @@ namespace BookAPI.Controllers
         public AuthorsController(ILogger<AuthorsController> logger, IAuthorService authorService, ICacheService cacheService, IMapper mapper)
         {
             _logger = logger;
-            this._authorService = authorService;
+            _authorService = authorService;
             _cacheService = cacheService;
             _mapper = mapper;
         }
@@ -33,28 +32,17 @@ namespace BookAPI.Controllers
         public async Task<IActionResult> GetAll()
         {
             // cache
-            var stopwatch = Stopwatch.StartNew();
             var cachAuthors = await _cacheService.GetDataAsync<IEnumerable<AuthorDTO>>("Authors");
-            stopwatch.Stop();
-            _logger.LogInformation($"Cache retrieval time: {stopwatch.ElapsedMilliseconds} ms");
-
             if (cachAuthors != null)
             {
                 return Ok(_mapper.Map<IEnumerable<GetAuthorResponse>>(cachAuthors));
             }
 
             // db
-            var stopwatch2 = Stopwatch.StartNew();
             var dbAuthors = await _authorService.GetAll();
-            stopwatch2.Stop();
-            _logger.LogInformation($"Database retrieval time: {stopwatch2.ElapsedMilliseconds} ms");
-
+            
             // кэшируем результат
-            var isSuccess = await _cacheService.SetDataAsync("Authors", dbAuthors, DateTimeOffset.Now.AddMinutes(5));
-            if (isSuccess == false)
-            {
-                _logger.LogError("Value not insert into cache!");
-            }
+            await _cacheService.SetDataAsync("Authors", dbAuthors, DateTimeOffset.Now.AddMinutes(5));
 
             return Ok(_mapper.Map<IEnumerable<GetAuthorResponse>>(dbAuthors));
         }
@@ -71,14 +59,10 @@ namespace BookAPI.Controllers
             }
 
             // authors with their books
-            var authors = await _authorService.GetAllWithBooks();
+            var authors = await _authorService.GetAllWithBooks(); 
             
-            var isSuccess = await _cacheService.SetDataAsync("Authors", authors, DateTimeOffset.Now.AddMinutes(5));
-            if (isSuccess == false)
-            {
-                _logger.LogError("Value not insert into cache!");
-            }
-
+            await _cacheService.SetDataAsync("Authors", authors, DateTimeOffset.Now.AddMinutes(5));
+            
             return Ok(_mapper.Map<IEnumerable<GetAuthorWithBooksResponse>>(authors));
         }
 
@@ -102,44 +86,27 @@ namespace BookAPI.Controllers
                 return NotFound($"Author with ID {authorId} was not found.");
             }
 
-            var isSuccess = await _cacheService.SetDataAsync(authorId.ToString(), author, DateTimeOffset.Now.AddMinutes(5));
-            if (isSuccess == false)
-            {
-                _logger.LogError("Value not insert into cache!");
-            }
+            await _cacheService.SetDataAsync(authorId.ToString(), author, DateTimeOffset.Now.AddMinutes(5));
             
             return Ok(_mapper.Map<GetAuthorResponse>(author));
         }
 
         // Authors/page?firstName=string&lastName=string
-        //[HttpGet("filter")]
-        //[ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<GetAuthorResponse>))]
-        //public async Task<IActionResult> GetAuthorByFilter([FromQuery] string? firstName, [FromQuery] string? lastName)
-        //{
-        //    string cacheKey = $"firstName:{firstName ?? "null"}_lastName:{lastName ?? "null"}";
-        //    var cacheAuthors = await _cacheService.GetDataAsync<IEnumerable<AuthorDTO>>(cacheKey);
-        //    if (cacheAuthors != null)
-        //    {
-        //        return Ok(_mapper.Map<IEnumerable<GetAuthorResponse>>(cacheAuthors));
-        //    }
+        [HttpGet("filter")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<GetAuthorResponse>))]
+        public async Task<IActionResult> GetAuthorByFilter([FromQuery] string? firstName, [FromQuery] string? lastName)
+        {
+            // no cache here
+            var authors = await _authorService.GetByFilter(firstName, lastName);
 
-        //    var authors = await _authorService.GetByFilter(firstName, lastName);
-
-        //    if (authors.Count == 0)
-        //    {
-        //        _logger.LogWarning($"Author with firstName {firstName ?? "\'null\'"} and lastName {lastName ?? "\'null\'"} not found.");
-        //        return Ok(new List<GetAuthorResponse>());
-        //    }
-
-        //    var isSuccess = await _cacheService.SetDataAsync(cacheKey, authors, DateTimeOffset.Now.AddMinutes(5));
-        //    if (isSuccess == false)
-        //    {
-        //        _logger.LogError("Value not insert into cache!");
-        //    }
-
-        //    // mapping
-        //    return Ok(_mapper.Map<IEnumerable<GetAuthorResponse>>(authors));
-        //}
+            if (authors.Count == 0)
+            {
+                _logger.LogWarning($"Author with firstName {firstName ?? "\'null\'"} and lastName {lastName ?? "\'null\'"} not found.");
+                return Ok(new List<GetAuthorResponse>());
+            }
+            // mapping
+            return Ok(_mapper.Map<IEnumerable<GetAuthorResponse>>(authors));
+        }
 
         // Authors/page?page=int&pageSize=int
         [HttpGet("page")]
@@ -189,11 +156,8 @@ namespace BookAPI.Controllers
             }
 
             // update cache
-            string cacheKey = $"firstName:{request.FirstName ?? "null"}_lastName:{request.LastName ?? "null"}";
-            var isSuccess = _cacheService.SetDataAsync(cacheKey, createdAuthor.Value, DateTimeOffset.Now.AddMinutes(5));
-            var authors = await _authorService.GetAll();
-            isSuccess = _cacheService.SetDataAsync("Authors", authors, DateTimeOffset.Now.AddMinutes(5));
-
+            await _cacheService.RemoveDataAsync("Authors");
+            
             return Ok(_mapper.Map<GetAuthorResponse>(createdAuthor.Value));
         }
 
@@ -228,6 +192,12 @@ namespace BookAPI.Controllers
                 return BadRequest(result.Errors);
             }
 
+            await _cacheService.RemoveListAsync(new List<string>
+            {
+                "Authors",
+                result.Value.ToString()
+            });
+
             var response = new UpdateAuthorResponse(result.Value);
             return Ok(response);
         }
@@ -254,6 +224,12 @@ namespace BookAPI.Controllers
                 return BadRequest(result.Errors);
             }
 
+            await _cacheService.RemoveListAsync(new List<string>
+            {
+                "Authors",
+                result.Value.ToString()
+            });
+
             var response = new UpdateAuthorResponse(result.Value);
             return Ok(response);
         }
@@ -273,21 +249,13 @@ namespace BookAPI.Controllers
 
                 return BadRequest(deletedAuthor.Errors);
             }
-
-            string cacheKey = $"firstName:{deletedAuthor.Value.FirstName ?? "null"}_lastName:{deletedAuthor.Value.LastName ?? "null"}";
-
-            // если по ключу уже не было значений - false будет
-            var isSuccess1 = await _cacheService.RemoveDataAsync(cacheKey);
-            var isSuccess2 = await _cacheService.RemoveDataAsync("Authors");
-
-            if (isSuccess1 == false)
-            {
-                _logger.LogError($"Value for key {cacheKey} is not removed from cache!");
-            }
-            if (isSuccess2 == false)
-            {
-                _logger.LogError($"Value for key \"Authors\" is not removed from cache!");
-            }
+            
+            //update cache
+            await _cacheService.RemoveListAsync(new List<string>
+            { 
+                "Authors",
+                authorId.ToString() 
+            });
 
             return Ok(_mapper.Map<GetAuthorResponse>(deletedAuthor.Value));
         }
