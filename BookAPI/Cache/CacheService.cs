@@ -34,7 +34,7 @@ namespace BookAPI.Cache
             return _cacheDb.StringSetAsync(key, JsonSerializer.Serialize(value), lifeTime);
         }
 
-        public async Task<bool> RemoveDataAsync<T>(string key)
+        public async Task<bool> RemoveDataAsync(string key)
         {
             var isExists = await _cacheDb.KeyExistsAsync(key);
 

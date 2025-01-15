@@ -14,6 +14,6 @@
         /// <returns></returns>
         public Task<bool> SetDataAsync<T>(string key, T value, DateTimeOffset expirationTime);
 
-        public Task<bool> RemoveDataAsync<T>(string key);
+        public Task<bool> RemoveDataAsync(string key);
     }
 }

@@ -1,4 +1,4 @@
-﻿using DAL.Entities;
+﻿using System.Text.Json.Serialization;
 
 namespace BLL.DTOs
 {
@@ -14,10 +14,10 @@ namespace BLL.DTOs
 
         public Guid AuthorId { get; set; }
 
-        // для не зацикливания сериализации в json
-        //[JsonIgnore]
-        public Author? Author { get; set; }
+        // для не зацикливания cериализации в json (cache)
+        [JsonIgnore]
+        public AuthorDTO? Author { get; set; }
 
-        public List<Genre> Genres { get; set; } = [];
+        public List<GenreDTO> Genres { get; set; } = [];
     }
 }
